@@ -9,7 +9,7 @@ import {
 
 export async function POST(request: NextRequest) {
   try {
-    // Ensure database is seeded
+    // CRITICAL: Wait for database to be seeded before any operations
     await ensureSeeded();
 
     const body = await request.json();
