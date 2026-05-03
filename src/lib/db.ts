@@ -1,9 +1,9 @@
 import { PrismaClient } from '@prisma/client'
-import { PrismaLibSQL } from '@prisma/adapter-libsql'
+import { PrismaLibSql } from '@prisma/adapter-libsql'
 import { createClient, type Client } from '@libsql/client'
 
 // ==================== LIBSQL ADAPTER FOR CLOUD DB ====================
-function createLibSQLAdapter(): { client: Client; adapter: PrismaLibSQL } | null {
+function createLibSQLAdapter(): { client: Client; adapter: PrismaLibSql } | null {
   const databaseUrl = process.env.DATABASE_URL || ''
   
   // Use libsql adapter for Turso cloud URLs or HTTP URLs
@@ -12,7 +12,7 @@ function createLibSQLAdapter(): { client: Client; adapter: PrismaLibSQL } | null
       url: databaseUrl,
       authToken: process.env.DATABASE_AUTH_TOKEN || undefined,
     })
-    const adapter = new PrismaLibSQL(client)
+    const adapter = new PrismaLibSql(client)
     return { client, adapter }
   }
   
