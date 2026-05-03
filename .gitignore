@@ -36,6 +36,8 @@ yarn-error.log*
 # vercel
 .vercel
 
+# database files
+db/
 
 # typescript
 *.tsbuildinfo
@@ -52,3 +54,10 @@ prompt
 server.log
 # Skills directory
 /skills/
+
+# Source backup and temporary files
+verifyhub-source/
+download/
+serve.sh
+start-dev.sh
+.zscripts/
