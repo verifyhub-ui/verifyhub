@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,20 +7,173 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ==================== USER & AUTH ====================
+
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String
+  name          String?
+  role          String   @default("USER") // USER, ADMIN
+  balance       Float    @default(0)
+  isActive      Boolean  @default(true)
+  lastLogin     DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  orders        Order[]
+  transactions  Transaction[]
+  notifications Notification[]
+  topupRequests TopupRequest[]
 }
 
-model Post {
+// ==================== SERVICES & COUNTRIES ====================
+
+model Service {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  category    String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  providerServices ProviderService[]
+}
+
+model Country {
+  id          String   @id @default(cuid())
+  name        String
+  code        String   @unique  // ISO 3166-1 alpha-2
+  phoneCode   String   // +1, +44, etc.
+  flag        String?  // emoji flag
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  providerServices ProviderService[]
+}
+
+// ==================== PROVIDERS ====================
+
+model Provider {
   id        String   @id @default(cuid())
+  name      String
+  apiKey    String?
+  apiUrl    String
+  isActive  Boolean  @default(true)
+  priority  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  providerServices ProviderService[]
+}
+
+model ProviderService {
+  id               String   @id @default(cuid())
+  providerId       String
+  serviceId        String
+  countryId        String?
+  externalServiceId String   // Service ID on provider's platform
+  externalPrice    Float    // Cost from provider
+  markupPercent    Float    @default(30)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  provider Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  service  Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  country  Country? @relation(fields: [countryId], references: [id], onDelete: SetNull)
+
+  orders Order[]
+}
+
+// ==================== ORDERS ====================
+
+model Order {
+  id                String   @id @default(cuid())
+  userId            String
+  providerServiceId String
+  status            String   @default("PENDING") // PENDING, ACTIVE, COMPLETED, CANCELLED, EXPIRED
+  phoneNumber       String?
+  externalOrderId   String?  // Order ID on provider's platform
+  smsCode           String?
+  smsText           String?
+  expiresAt         DateTime?
+  completedAt       DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  providerService ProviderService @relation(fields: [providerServiceId], references: [id])
+  transaction     Transaction?
+}
+
+// ==================== TRANSACTIONS ====================
+
+model Transaction {
+  id              String    @id @default(cuid())
+  userId          String
+  orderId         String?   @unique
+  topupRequestId  String?   @unique
+  type            String    // PURCHASE, TOPUP, REFUND, ADJUSTMENT
+  amount          Float
+  balanceBefore   Float
+  balanceAfter    Float
+  description     String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order         Order?         @relation(fields: [orderId], references: [id])
+  topupRequest  TopupRequest?  @relation(fields: [topupRequestId], references: [id])
+}
+
+// ==================== TOPUP REQUESTS ====================
+
+model TopupRequest {
+  id               String    @id @default(cuid())
+  userId           String
+  amount           Float
+  method           String    @default("manual") // crypto, bank, manual, other
+  status           String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  txRef            String?   // transaction reference / hash
+  proof            String?   // proof of payment (URL or note)
+  reviewedBy       String?
+  reviewedAt       DateTime?
+  rejectionReason  String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transaction   Transaction?
+
+  @@index([status])
+  @@index([userId])
+}
+
+// ==================== NOTIFICATIONS ====================
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
   title     String
-  content   String?
-  published Boolean  @default(false)
-  authorId  String
+  message   String
+  type      String   @default("INFO") // INFO, WARNING, SUCCESS, ERROR
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ==================== SETTINGS ====================
+
+model Settings {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
