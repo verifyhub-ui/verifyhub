@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { ensureSeeded } from '@/app/api/route';
 import {
   verifyPassword,
   generateToken,
@@ -8,6 +9,9 @@ import {
 
 export async function POST(request: NextRequest) {
   try {
+    // Ensure database is seeded
+    await ensureSeeded();
+
     const body = await request.json();
     const { email, password } = body;
 
@@ -81,8 +85,9 @@ export async function POST(request: NextRequest) {
     return response;
   } catch (error) {
     console.error('Login error:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', debug: message },
       { status: 500 },
     );
   }
